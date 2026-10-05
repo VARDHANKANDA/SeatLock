@@ -1,0 +1,24 @@
+# Local development only. Activate with SPRING_PROFILES_ACTIVE=dev.
+# Convenience defaults for local work; DB_PASSWORD and JWT_SECRET must still be provided.
+# The seeded demo accounts must never exist on a deployed environment.
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:15432/booking}
+    username: ${DB_USERNAME:booking}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:16379}
+
+app:
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+  seed:
+    admin-email: admin@example.com
+    admin-password: Admin#12345
+    user-email: user@example.com
+    user-password: User#12345
+
+logging:
+  level:
+    com.example.booking: DEBUG

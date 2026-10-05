@@ -1,0 +1,107 @@
+spring:
+  application:
+    name: booking-api
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      # Fail fast when the database is unreachable or the pool is exhausted, instead of the 30 s default.
+      connection-timeout: ${DB_CONNECTION_TIMEOUT_MS:5000}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 500ms
+      connect-timeout: 500ms
+  task:
+    scheduling:
+      pool:
+        size: 2
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+server:
+  port: ${PORT:8080}
+  shutdown: graceful
+  # X-Forwarded-For is ignored unless the application sits behind a proxy you control. Set
+  # FORWARD_HEADERS_STRATEGY=native and TRUSTED_PROXIES to a regex of that proxy's address(es); the header is
+  # then honoured only when the TCP peer matches, and only the right-most untrusted address is used.
+  forward-headers-strategy: ${FORWARD_HEADERS_STRATEGY:none}
+  tomcat:
+    remoteip:
+      internal-proxies: ${TRUSTED_PROXIES:}
+  error:
+    include-stacktrace: never
+    include-message: never
+
+app:
+  jwt:
+    secret: ${JWT_SECRET}
+    expiration: ${JWT_EXPIRATION:1h}
+    issuer: booking-api
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:}
+  locking:
+    # Longest a booking or hold transaction waits for a row lock; 0 disables the timeout.
+    lock-timeout-ms: ${LOCK_TIMEOUT_MS:3000}
+  reservation:
+    hold-duration-seconds: ${RESERVATION_HOLD_DURATION_SECONDS:300}
+    expiry-sweep-interval-seconds: ${RESERVATION_EXPIRY_SWEEP_INTERVAL_SECONDS:30}
+    expiry-batch-size: ${RESERVATION_EXPIRY_BATCH_SIZE:100}
+  cache:
+    event-ttl-seconds: ${EVENT_CACHE_TTL_SECONDS:60}
+  rate-limit:
+    login-per-minute: ${LOGIN_RATE_LIMIT_PER_MINUTE:10}
+    register-per-minute: ${REGISTER_RATE_LIMIT_PER_MINUTE:5}
+    booking-per-minute: ${BOOKING_RATE_LIMIT_PER_MINUTE:30}
+  outbox:
+    poll-interval-seconds: ${OUTBOX_POLL_INTERVAL_SECONDS:5}
+    batch-size: ${OUTBOX_BATCH_SIZE:50}
+    max-attempts: ${OUTBOX_MAX_ATTEMPTS:5}
+  retention:
+    # 0 disables a rule. Pending and retryable outbox events are never deleted.
+    outbox-processed-days: ${OUTBOX_RETENTION_DAYS:14}
+    outbox-failed-days: ${OUTBOX_FAILED_RETENTION_DAYS:0}
+    idempotency-hours: ${IDEMPOTENCY_RETENTION_HOURS:24}
+    batch-size: ${RETENTION_BATCH_SIZE:500}
+    cleanup-interval-minutes: ${RETENTION_INTERVAL_MINUTES:60}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never
+      probes:
+        enabled: true
+  health:
+    redis:
+      enabled: false
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+  api-docs:
+    path: /v3/api-docs
+
+logging:
+  level:
+    com.example.booking: INFO

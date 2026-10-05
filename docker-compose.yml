@@ -1,0 +1,77 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-booking}
+      POSTGRES_USER: ${POSTGRES_USER:-booking}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env (see .env.example)}
+    ports:
+      - "127.0.0.1:${DB_PORT:-15432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    # Cache and rate-limit counters only; losing them is harmless, so nothing is persisted and memory is bounded.
+    # Every key the application writes has a TTL, so volatile-lru can always make room.
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "128mb", "--maxmemory-policy", "volatile-lru"]
+    # The application reaches Redis over the Compose network. The localhost mapping exists only so the
+    # application can also be started from Maven on the host.
+    ports:
+      - "127.0.0.1:${REDIS_HOST_PORT:-16379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-booking}
+      DB_USERNAME: ${POSTGRES_USER:-booking}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
+      DB_CONNECTION_TIMEOUT_MS: ${DB_CONNECTION_TIMEOUT_MS:-5000}
+      LOCK_TIMEOUT_MS: ${LOCK_TIMEOUT_MS:-3000}
+      FORWARD_HEADERS_STRATEGY: ${FORWARD_HEADERS_STRATEGY:-none}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (see .env.example)}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-1h}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-}
+      RESERVATION_HOLD_DURATION_SECONDS: ${RESERVATION_HOLD_DURATION_SECONDS:-300}
+      RESERVATION_EXPIRY_SWEEP_INTERVAL_SECONDS: ${RESERVATION_EXPIRY_SWEEP_INTERVAL_SECONDS:-30}
+      RESERVATION_EXPIRY_BATCH_SIZE: ${RESERVATION_EXPIRY_BATCH_SIZE:-100}
+      EVENT_CACHE_TTL_SECONDS: ${EVENT_CACHE_TTL_SECONDS:-60}
+      LOGIN_RATE_LIMIT_PER_MINUTE: ${LOGIN_RATE_LIMIT_PER_MINUTE:-10}
+      REGISTER_RATE_LIMIT_PER_MINUTE: ${REGISTER_RATE_LIMIT_PER_MINUTE:-5}
+      BOOKING_RATE_LIMIT_PER_MINUTE: ${BOOKING_RATE_LIMIT_PER_MINUTE:-30}
+      OUTBOX_POLL_INTERVAL_SECONDS: ${OUTBOX_POLL_INTERVAL_SECONDS:-5}
+      OUTBOX_BATCH_SIZE: ${OUTBOX_BATCH_SIZE:-50}
+      OUTBOX_MAX_ATTEMPTS: ${OUTBOX_MAX_ATTEMPTS:-5}
+      OUTBOX_RETENTION_DAYS: ${OUTBOX_RETENTION_DAYS:-14}
+      OUTBOX_FAILED_RETENTION_DAYS: ${OUTBOX_FAILED_RETENTION_DAYS:-0}
+      IDEMPOTENCY_RETENTION_HOURS: ${IDEMPOTENCY_RETENTION_HOURS:-24}
+      RETENTION_BATCH_SIZE: ${RETENTION_BATCH_SIZE:-500}
+      RETENTION_INTERVAL_MINUTES: ${RETENTION_INTERVAL_MINUTES:-60}
+    ports:
+      - "127.0.0.1:${APP_PORT:-8080}:8080"
+    restart: unless-stopped
+
+volumes:
+  pgdata:

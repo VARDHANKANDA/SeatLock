@@ -1,0 +1,30 @@
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 20
+      # Many test configurations keep their own cached context; idle ones must not hoard connections.
+      minimum-idle: 2
+      idle-timeout: 10000
+
+app:
+  jwt:
+    secret: test-only-jwt-secret-0123456789-abcdefghijklmnopqrstuvwxyz
+    expiration: 15m
+  cors:
+    allowed-origins: http://localhost:3000
+  # Schedulers fire once an hour so tests drive expiry and outbox processing explicitly.
+  reservation:
+    expiry-sweep-interval-seconds: 3600
+  outbox:
+    poll-interval-seconds: 3600
+  retention:
+    cleanup-interval-minutes: 600
+  # Rate limits are effectively off for the shared context; RateLimitTest overrides them.
+  rate-limit:
+    login-per-minute: 1000000
+    register-per-minute: 1000000
+    booking-per-minute: 1000000
+
+logging:
+  level:
+    com.example.booking: INFO
